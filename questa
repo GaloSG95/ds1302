@@ -1,0 +1,24 @@
+#!bin/bash
+
+rtl=rtl
+work=work
+tb=tb
+tcl=tcl
+
+if [[ ! -d $work ]]; then 
+    vlib $work
+    echo "Created working library in $work"
+else
+    echo "Working library exists in $work"
+fi
+
+echo "compiling design files..."
+vcom -work $work -2002 -explicit -stats=all $rtl/*.vhdl
+echo "compiling test bench files..."
+vcom -work $work -2002 -explicit -stats=all $tb/*.vhdl
+
+if [ $# -gt 0 ]; then
+  vopt $1 +acc=vrn -o opt_tb
+  echo "launching QuestaSim..."
+  vsim -gui -lib $work -do $tb/$tcl/$1.tcl opt_tb
+fi
