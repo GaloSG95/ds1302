@@ -50,7 +50,7 @@ BEGIN
     -- Concurrent Conditional Assignments
     sclk        <= sclk_reg;
     transition  <= '1' WHEN (sclk_counter = SCLK_PERIOD - 1) AND (sclk_reg = '1') ELSE '0';
-    command     <= rw & addr & '0' & '1';
+    command     <= '1' & '0' & addr & rw;
     -- SPI CLOCK GENERATOR 1 MHz
     sclk_gen : PROCESS (clk, rst)
     BEGIN
@@ -72,7 +72,7 @@ BEGIN
         VARIABLE message     : STD_LOGIC_VECTOR(15 DOWNTO 0);
     BEGIN
         IF rst = '1' THEN
-            bit_counter := FULL_MES_LENGTH;
+            bit_counter := (others => '0');
             message     := (others => '0');
             ce          <= '0';
             i_buff      <= '0';  -- write with t = 0
@@ -86,7 +86,7 @@ BEGIN
                 WHEN IDLE_E =>
                     IF transition = '1' and start = '1' THEN
                         busy    <= '1';
-                        message := command & din;
+                        message := din & command;
                         ce      <= '1';
                         i_buff  <= message(to_integer(bit_counter));
                         state   <= COMMAND_E;
@@ -95,8 +95,8 @@ BEGIN
                     i_buff <= message(to_integer(bit_counter));
                     IF transition = '1' THEN
                         -- check before count down
-                        IF bit_counter = COMMAND_LENGTH THEN
-                            if command(7) = '1' then
+                        IF bit_counter = COMMAND_LENGTH - 1 THEN
+                            if message(0) = '1' then
                                 t_buff      <= '1';
                                 state       <= READ_E;
                             else
@@ -104,29 +104,28 @@ BEGIN
                             end if;
                         END IF;
                         -- count down
-                        bit_counter := bit_counter - 1;
+                        bit_counter := bit_counter + 1;
                     END IF;
                 WHEN WRITE_E =>
                     i_buff <= message(to_integer(bit_counter));
                     IF transition = '1' THEN
-                        IF bit_counter = "0000" THEN
+                        IF bit_counter = FULL_MES_LENGTH THEN
                             state       <= DONE_E;
-                            bit_counter := FULL_MES_LENGTH;
-                        ELSE
-                            bit_counter := bit_counter - 1;
+                            bit_counter := bit_counter + 1;
                         END IF;
+
+                        bit_counter := bit_counter + 1;
                     END IF;
                 WHEN READ_E =>
                     IF transition = '1' THEN
                         message(7 downto 0) := o_buff & message(7 downto 1);
-                        IF bit_counter = "0000" THEN
+                        IF bit_counter = FULL_MES_LENGTH THEN
                             dout_reg    <= message(7 downto 0);
                             dvalid_reg  <= '1';
                             state       <= DONE_E;
-                            bit_counter := FULL_MES_LENGTH;
-                        ELSE
-                            bit_counter := bit_counter - 1;
                         END IF;
+
+                        bit_counter := bit_counter + 1;
                     END IF;
                 WHEN DONE_E =>
                     ce      <= '0';

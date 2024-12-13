@@ -77,7 +77,7 @@ begin
   reset_process : process
   begin
     rst <= '1';
-    wait for PERIOD;
+    wait for 2*PERIOD;
     rst <= '0';
     wait;
   end process;
@@ -118,9 +118,9 @@ begin
   begin
     o_buff  <= '0';
     rw      <= '1';
-    addr    <= "10111";
+    addr    <= "11110";
     din     <= (others => '0');
-    command := '1' & '0' & "10111" & '1';
+    command := '1' & '0' & "11110" & '1';
     wait until falling_edge(rst);
     -- begin transactions
     for idx in 0 to 1 loop
@@ -142,7 +142,7 @@ begin
         o_buff <= TVECTOR(idx);
       end loop;
 
-      wait until rising_edge(dvalid);
+      wait until falling_edge(busy);
       assert dout = TVECTOR report "SEND DATA not equal" severity warning;
 
     end loop;
